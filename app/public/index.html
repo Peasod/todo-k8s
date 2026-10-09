@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Todos</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 2rem auto; }
+    li { display: flex; gap: .5rem; align-items: center; margin: .4rem 0; }
+    li span { flex: 1; }
+    .done span { text-decoration: line-through; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Todos</h1>
+  <form id="form">
+    <input id="title" placeholder="New todo" required>
+    <button>Add</button>
+  </form>
+  <ul id="list"></ul>
+  <script>
+    const list = document.getElementById("list");
+    const api = (path, opts = {}) =>
+      fetch("/api/todos" + path, {
+        headers: { "Content-Type": "application/json" },
+        ...opts,
+      });
+
+    async function load() {
+      const todos = await (await api("")).json();
+      list.innerHTML = "";
+      for (const t of todos) {
+        const li = document.createElement("li");
+        li.className = t.done ? "done" : "";
+        const cb = Object.assign(document.createElement("input"), { type: "checkbox", checked: t.done });
+        cb.onchange = async () => { await api("/" + t.id, { method: "PUT", body: JSON.stringify({ done: cb.checked }) }); load(); };
+        const span = document.createElement("span");
+        span.textContent = t.title;
+        const edit = document.createElement("button");
+        edit.textContent = "Edit";
+        edit.onclick = async () => {
+          const title = prompt("Edit todo", t.title);
+          if (title) { await api("/" + t.id, { method: "PUT", body: JSON.stringify({ title }) }); load(); }
+        };
+        const del = document.createElement("button");
+        del.textContent = "Delete";
+        del.onclick = async () => { await api("/" + t.id, { method: "DELETE" }); load(); };
+        li.append(cb, span, edit, del);
+        list.append(li);
+      }
+    }
+
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("title");
+      await api("", { method: "POST", body: JSON.stringify({ title: input.value }) });
+      input.value = "";
+      load();
+    };
+    load();
+  </script>
+</body>
+</html>
